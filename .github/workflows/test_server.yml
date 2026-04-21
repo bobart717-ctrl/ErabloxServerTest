@@ -1,28 +1,40 @@
-name: Mobile Revival Server
+name: ERaBlox Test Server (6 Hours)
 on: 
-  workflow_dispatch:
+  workflow_dispatch: # Кнопка ручного запуску в Actions
 
 jobs:
-  run-server:
-    runs-on: ubuntu-latest # Linux швидше піднімає тунелі
+  server-host:
+    runs-on: ubuntu-latest
     steps:
-      - name: Install ngrok
-        run: |
-          curl -s https://ngrok-agent.s3.amazonaws.com/ngrok.asc | sudo tee /etc/apt/trusted.gpg.d/ngrok.asc >/dev/null
-          echo "deb https://ngrok-agent.s3.amazonaws.com buster main" | sudo tee /etc/apt/sources.list.d/ngrok.list
-          sudo apt update && sudo apt install ngrok
+      - name: Checkout Repository
+        uses: actions/checkout@v4
 
-      - name: Start Ngrok Tunnel
-        env:
-          NGROK_AUTH_TOKEN: ${{ secrets.NGROK_AUTH_TOKEN }}
-        run: |
-          ngrok authtoken $NGROK_AUTH_TOKEN
-          # Прокидаємо порт для гри (UDP/TCP залежно від налаштувань мобільного клієнта)
-          ngrok http 8080 & 
-          sleep 5
-          curl -s http://localhost:4040/api/tunnels | jq -r '.tunnels[0].public_url'
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.x'
 
-      - name: Server Keep-Alive
+      - name: Get Server Info
         run: |
-          echo "Сервер працює. Чекаю на ручну зупинку (max 6 годин)..."
+          echo "--------------------------------------------------"
+          echo "СЕРВЕР ERABLOX ЗАПУЩЕНО"
+          echo "Він буде активний 6 годин або до твоєї зупинки."
+          echo "Твій публічний IP для тесту:"
+          curl -s https://ifconfig.me
+          echo -e "\n--------------------------------------------------"
+
+      - name: Run Web Server and Keep-Alive
+        run: |
+          # Запускаємо сервер на фоні (порт 8080)
+          # Він буде віддавати всі файли: join.lua, asset.rbxl тощо.
+          python3 -m http.server 8080 & 
+          
+          echo "Веб-сервер роздає файли на порту 8080..."
+          
+          # Заглушка на 6 годин (21600 секунд)
+          # Процес буде "висіти" тут, поки час не вийде або ти не натиснеш Cancel
           sleep 21600
+
+      - name: On Shutdown
+        if: cancelled()
+        run: echo "Сервер зупинено користувачем вручну."
